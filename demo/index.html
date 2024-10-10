@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mapbox GL Widget SDK Demo</title>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css"
+      rel="stylesheet"
+    />
+    <script src="../dist/mapbox-gl-widget-sdk.js"></script>
+    <style>
+      #mapContainer {
+        width: 100%;
+        height: 500px;
+      }
+      #controls {
+        margin-top: 20px;
+      }
+      #controls input,
+      #controls button,
+      #controls textarea,
+      #controls select {
+        margin-right: 10px;
+        margin-bottom: 10px;
+      }
+      #directions {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mapContainer"></div>
+    <div id="controls">
+      <button id="toggleViewButton">Toggle Satellite/Street View</button
+      ><br /><br />
+
+      <input type="text" id="cityInput" placeholder="Enter city name" />
+      <button id="createMarkerButton">Create Marker</button>
+      <button id="flyToButton">Fly To Location</button><br /><br />
+
+      <input
+        type="text"
+        id="routeStart"
+        placeholder="Start coordinates or city name"
+      />
+      <input
+        type="text"
+        id="routeEnd"
+        placeholder="End coordinates or city name"
+      />
+      <select id="routeProfile">
+        <option value="driving">Driving</option>
+        <option value="walking">Walking</option>
+        <option value="cycling">Cycling</option>
+      </select>
+      <button id="drawRouteButton">Draw Route</button><br /><br />
+
+      <input type="file" id="geoJsonFileInput" accept=".geojson" />
+      <button id="addGeoJsonMarkersButton">Add GeoJSON Markers</button>
+      <button id="addHeatmapButton">Add Heatmap</button><br /><br />
+
+      <input
+        type="text"
+        id="removeMarkerId"
+        placeholder="Marker ID to remove"
+      />
+      <button id="removeMarkerButton">Remove Marker</button><br /><br />
+
+      <button id="initializeDrawingButton">Initialize Drawing Tool</button>
+      <button id="drawPolygonButton">Draw Polygon</button><br /><br />
+
+      <div id="directions"></div>
+    </div>
+
+    <script>
+      (function () {
+        // Initialize the map
+        const accessToken =
+          "pk.eyJ1IjoidG9tYXN6bGl1bnNraSIsImEiOiJjbTIxdDlhOWMwc2p6MmxyMm5vaG9mODB5In0.TNJgkceJOAVDJeaMrma1sA";
+        MapboxGLWidgetSDK.initializeMap("mapContainer", {
+          center: [0, 0],
+          zoom: 2,
+          style: "streets-v12",
+          accessToken: accessToken,
+        });
+
+        document
+          .getElementById("toggleViewButton")
+          .addEventListener("click", () => {
+            MapboxGLWidgetSDK.toggleMapStyle();
+          });
+
+        document
+          .getElementById("createMarkerButton")
+          .addEventListener("click", async () => {
+            const city = document.getElementById("cityInput").value;
+            await MapboxGLWidgetSDK.createMarker({
+              id: city,
+              locationName: city,
+              label: city,
+            });
+          });
+
+        document
+          .getElementById("flyToButton")
+          .addEventListener("click", async () => {
+            const city = document.getElementById("cityInput").value;
+            await MapboxGLWidgetSDK.flyToLocation(city);
+          });
+
+        document
+          .getElementById("drawRouteButton")
+          .addEventListener("click", async () => {
+            const start = document.getElementById("routeStart").value;
+            const end = document.getElementById("routeEnd").value;
+            const profile = document.getElementById("routeProfile").value;
+            const directions = await MapboxGLWidgetSDK.drawRoute(
+              start,
+              end,
+              profile
+            );
+
+            // Display route directions
+            const directionsDiv = document.getElementById("directions");
+            let directionsHtml = `<p><strong>Trip duration: ${Math.floor(
+              directions.duration / 60
+            )} min</strong></p><ol>`;
+            directions.legs.forEach((leg) => {
+              leg.steps.forEach((step) => {
+                directionsHtml += `<li>${step.maneuver.instruction}</li>`;
+              });
+            });
+            directionsHtml += "</ol>";
+            directionsDiv.innerHTML = directionsHtml;
+          });
+
+        document
+          .getElementById("addGeoJsonMarkersButton")
+          .addEventListener("click", () => {
+            const fileInput = document.getElementById("geoJsonFileInput");
+            const file = fileInput.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = function (e) {
+                const geoJson = JSON.parse(e.target.result);
+                MapboxGLWidgetSDK.addMarkersFromGeoJSON(geoJson);
+              };
+              reader.readAsText(file);
+            }
+          });
+
+        document
+          .getElementById("addHeatmapButton")
+          .addEventListener("click", () => {
+            const fileInput = document.getElementById("geoJsonFileInput");
+            const file = fileInput.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = function (e) {
+                const geoJson = JSON.parse(e.target.result);
+                MapboxGLWidgetSDK.addHeatmapLayer("heatmap", geoJson);
+              };
+              reader.readAsText(file);
+            }
+          });
+
+        document
+          .getElementById("removeMarkerButton")
+          .addEventListener("click", () => {
+            const markerId = document.getElementById("removeMarkerId").value;
+            MapboxGLWidgetSDK.removeMarkerById(markerId);
+          });
+
+        document
+          .getElementById("initializeDrawingButton")
+          .addEventListener("click", () => {
+            MapboxGLWidgetSDK.initializeDrawingTool();
+          });
+
+        document
+          .getElementById("drawPolygonButton")
+          .addEventListener("click", () => {
+            MapboxGLWidgetSDK.startDrawingPolygon();
+          });
+      })();
+    </script>
+  </body>
+</html>
